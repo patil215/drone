@@ -1,8 +1,10 @@
-#include "I2Cdev.h"
-#include "Wire.h"
+#include <Wire.h>
 #include "Gyro.h"
 
 Gyro gyro;
+
+double gyroValues[4];
+int i = 0;
 
 void handleGyroInterrupt() {
   gyro.onDmpDataReady();
@@ -12,14 +14,37 @@ void enableGyroInterrupt() {
   // enable Arduino interrupt detection
   Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
   attachInterrupt(0, handleGyroInterrupt, RISING);
+  Serial.println("Interrupt attached");
 }
 
 void setup() {
+  Serial.begin(9600);
   enableGyroInterrupt();
+  if (!gyro.initialize()) {
+    Serial.println("Gyro initialization failed!");
+  }
+  if (!gyro.startDmp()) {
+    Serial.println("Gyro DMP starting failed!");
+  }
 }
 
 void loop() {
-  
+  if (gyro.interruptReady()) {
+    bool result = gyro.getGyroData(Gyro::DataType::QUATERNION, gyroValues);
+    if (!result) {
+      Serial.println("Failed to get Gyro data");
+    }
+    if ((i % 500) == 0) {
+      Serial.println(gyroValues[0]);
+      Serial.println(gyroValues[1]);
+      Serial.println(gyroValues[2]);
+      Serial.println(gyroValues[3]);
+      Serial.println("");
+      i = 0;
+    }
+    i += 1;
+  }
+  delay(1);
 }
 
 

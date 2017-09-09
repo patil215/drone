@@ -1,5 +1,5 @@
-#ifndef GYRO_H
-#define GYRO_H
+#ifndef _GYRO_H_
+#define _GYRO_H_
 
 #include "MPU6050_6Axis_MotionApps20.h"
 
@@ -9,12 +9,13 @@ class Gyro {
   	bool initialize();
   	bool startDmp();
 
-    enum DataType {
+    enum class DataType {
     	QUATERNION, EULERANGLE, YAWPITCHROLL, REALACCEL, WORLDACCEL, TEAPOT
     };
 
+    bool interruptReady();
     void onDmpDataReady();
-    double * getGyroData(DataType type);
+    bool getGyroData(DataType type, double * valueArray);
 
   private:
     MPU6050 mpu;	  
@@ -40,13 +41,12 @@ class Gyro {
   
   	volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
   
-  	bool interruptReady();
   	int16_t * getCalibratedOffsets();
-    double * getQuaternion();
-    double *  getEuler();
-    double * getYawPitchRoll();
-    double * getRealAccel();
-    double * getWorldAccel();
+    void getQuaternion(double * valueArray);
+    void getEuler(double * valueArray);
+    void getYawPitchRoll(double * valueArray);
+    void getRealAccel(double * valueArray);
+    void getWorldAccel(double * valueArray);
 
 };
 #endif

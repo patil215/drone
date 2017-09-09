@@ -30,6 +30,7 @@ bool Gyro::initialize() {
   if (!mpu.testConnection()) {
   	return false;
   }
+  return true;
 }
   
 // TODO have this be calibrated
@@ -68,6 +69,7 @@ bool Gyro::startDmp() {
 
       // get expected DMP packet size for later comparison
       packetSize = mpu.dmpGetFIFOPacketSize();
+      return true;
   } else {
       // ERROR!
       // 1 = initial memory load failed
@@ -84,41 +86,46 @@ bool Gyro::interruptReady() {
 	return mpuInterrupt || !(fifoCount >= packetSize);
 }
 
-double * Gyro::getQuaternion() {
+void Gyro::getQuaternion(double * valueArray) {
 	// 0: w, 1: x, 2: y, 3: z
   mpu.dmpGetQuaternion(&q, fifoBuffer);
-  double vals[] = {q.w, q.x, q.y, q.z};
-  return vals;
+  valueArray[0] = q.w;
+  valueArray[1] = q.x;
+  valueArray[2] = q.y;
+  valueArray[3] = q.z;
 }
 
-double * Gyro::getEuler() {
+void Gyro::getEuler(double * valueArray) {
   // Give Euler angles in degrees
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetEuler(euler, &q);
-  double vals[] = {euler[0] * 180 / M_PI, euler[1] * 180/M_PI, euler[2] * 180/M_PI};
-  return vals;
+  valueArray[0] = euler[0] * 180 / M_PI;
+  valueArray[1] = euler[1] * 180/M_PI;
+  valueArray[2] = euler[2] * 180/M_PI;
 }
 
-double * Gyro::getYawPitchRoll() {
+void Gyro::getYawPitchRoll(double * valueArray) {
   // display Euler angles in degrees
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetGravity(&gravity, &q);
   mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-  double vals[] = {ypr[0] * 180/M_PI, ypr[1] * 180/M_PI, ypr[2] * 180/M_PI};
-  return vals;
+  valueArray[0] = ypr[0] * 180/M_PI;
+  valueArray[1] = ypr[1] * 180/M_PI;
+  valueArray[2] = ypr[2] * 180/M_PI;
 }
 
-double * Gyro::getRealAccel() {
+void Gyro::getRealAccel(double * valueArray) {
   // display real acceleration, adjusted to remove gravity
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetAccel(&aa, fifoBuffer);
   mpu.dmpGetGravity(&gravity, &q);
   mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-  double vals[] = {aaReal.x, aaReal.y, aaReal.z};
-  return vals;
+  valueArray[0] = aaReal.x;
+  valueArray[1] = aaReal.y;
+  valueArray[2] = aaReal.z;
 }
 
-double * Gyro::getWorldAccel() {
+void Gyro::getWorldAccel(double * valueArray) {
   // display initial world-frame acceleration, adjusted to remove gravity
   // and rotated based on known orientation from quaternion
   mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -126,14 +133,16 @@ double * Gyro::getWorldAccel() {
   mpu.dmpGetGravity(&gravity, &q);
   mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
   mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-  double vals[] = {aaWorld.x, aaWorld.y, aaWorld.z};
-  return vals;
+  valueArray[0] = aaWorld.x;
+  valueArray[1] = aaWorld.y;
+  valueArray[2] = aaWorld.z;
 }
 
-double * Gyro::getGyroData(DataType type) {
+bool Gyro::getGyroData(DataType type, double * valueArray) {
   // if programming failed, don't try to do anything and check MPU interrupt or extra packet(s) available
 	if (!dmpReady || !interruptReady()) {
-		return NULL;
+    Serial.println("DMP not ready! Returning null.");
+		return false;
 	}
 
   // reset interrupt flag and get INT_STATUS byte
@@ -147,9 +156,8 @@ double * Gyro::getGyroData(DataType type) {
   if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
       // reset so we can continue cleanly
       mpu.resetFIFO();
-      Serial.println(F("FIFO overflow!"));
-
-      return NULL;
+      Serial.println(F("FIFO overflow! Returning null."));
+      return false;
 
   // otherwise, check for DMP data ready interrupt (this should happen frequently)
   } else if (mpuIntStatus & 0x02) {
@@ -186,17 +194,23 @@ double * Gyro::getGyroData(DataType type) {
 		// reference (yaw is relative to initial orientation, since no magnetometer
 		// is present in this case). Could be quite handy in some cases.
       switch (type) {
-      	case QUATERNION:
-      		return getQuaternion();
-      	case EULERANGLE:
-      		return getEuler();
-      	case YAWPITCHROLL:
-      		return getYawPitchRoll();
-      	case REALACCEL:
-      		return getRealAccel();
-      	case WORLDACCEL:
-      		return getWorldAccel();
+      	case Gyro::DataType::QUATERNION:
+      		getQuaternion(valueArray);
+          return true;
+      	case Gyro::DataType::EULERANGLE:
+          getEuler(valueArray);
+          return true;
+      	case Gyro::DataType::YAWPITCHROLL:
+      		getYawPitchRoll(valueArray);
+          return true;
+      	case Gyro::DataType::REALACCEL:
+      		getRealAccel(valueArray);
+          return true;
+      	case Gyro::DataType::WORLDACCEL:
+      		getWorldAccel(valueArray);
+          return true;
       }
   }
-  return NULL;
+  Serial.println("No correct type, so returning null.");
+  return false;
 }
