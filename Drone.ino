@@ -1,15 +1,49 @@
-#include <Wire.h>
+#include "I2Cdev.h"
+#include "Wire.h"
+#include "Gyro.h"
+
+Gyro gyro;
+
+void handleGyroInterrupt() {
+  gyro.onDmpDataReady();
+}
+
+void enableGyroInterrupt() {
+  // enable Arduino interrupt detection
+  Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+  attachInterrupt(0, handleGyroInterrupt, RISING);
+}
+
+void setup() {
+  enableGyroInterrupt();
+}
+
+void loop() {
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
-
-
+#include <helper_3dmath.h>
 
 
 // MPU-6050 Short Example Sketch
 // By Arduino User JohnChi
 // August 17, 2014
 // Public Domain
-#include<Wire.h>
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,Tmp,GyX,GyY,GyZ;
 int16_t X_offset = 155;
@@ -146,4 +180,4 @@ void loop()
   Serial.println();
   delay(500);
   */
-//}
+//}*/
