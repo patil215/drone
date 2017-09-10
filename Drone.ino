@@ -6,6 +6,13 @@ double dataBuffer[10];
 Gyro gyro;
 double quaternionData[4];
 
+Bluetooth bluetooth;
+
+Motor motorA;
+Motor motorB;
+Motor motorC;
+Motor motorD;
+
 void setup() {
   Serial.begin(9600);
   initializeGyro();
