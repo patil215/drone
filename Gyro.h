@@ -30,7 +30,7 @@ class Gyro {
       compensated for orientation, us WorldAccel instead. */
       REALACCEL,
 
-      /* Acceleration components with gravity removed and adjusted for the world frame of
+      /*Acceleration components with gravity removed and adjusted for the world frame of
       reference (yaw is relative to initial orientation, since no magnetometer
       is present in this case). Could be quite handy in some cases. */
       WORLDACCEL
