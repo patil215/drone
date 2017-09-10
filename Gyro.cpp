@@ -57,9 +57,6 @@ bool Gyro::startDmp() {
       // turn on the DMP, now that it's ready
       Serial.println(F("Enabling DMP..."));
       mpu.setDMPEnabled(true);
-
-      // INTERRUPT DETECTION ENABLE CODE HERE
-      
       
       mpuIntStatus = mpu.getIntStatus();
 
@@ -86,7 +83,7 @@ bool Gyro::interruptReady() {
 	return mpuInterrupt || !(fifoCount >= packetSize);
 }
 
-void Gyro::getQuaternion(double * valueArray) {
+void Gyro::readQuaternion(double * valueArray) {
 	// 0: w, 1: x, 2: y, 3: z
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   valueArray[0] = q.w;
@@ -95,7 +92,7 @@ void Gyro::getQuaternion(double * valueArray) {
   valueArray[3] = q.z;
 }
 
-void Gyro::getEuler(double * valueArray) {
+void Gyro::readEuler(double * valueArray) {
   // Give Euler angles in degrees
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetEuler(euler, &q);
@@ -104,7 +101,7 @@ void Gyro::getEuler(double * valueArray) {
   valueArray[2] = euler[2] * 180/M_PI;
 }
 
-void Gyro::getYawPitchRoll(double * valueArray) {
+void Gyro::readYawPitchRoll(double * valueArray) {
   // display Euler angles in degrees
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetGravity(&gravity, &q);
@@ -114,7 +111,7 @@ void Gyro::getYawPitchRoll(double * valueArray) {
   valueArray[2] = ypr[2] * 180/M_PI;
 }
 
-void Gyro::getRealAccel(double * valueArray) {
+void Gyro::readRealAccel(double * valueArray) {
   // display real acceleration, adjusted to remove gravity
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetAccel(&aa, fifoBuffer);
@@ -125,7 +122,7 @@ void Gyro::getRealAccel(double * valueArray) {
   valueArray[2] = aaReal.z;
 }
 
-void Gyro::getWorldAccel(double * valueArray) {
+void Gyro::readWorldAccel(double * valueArray) {
   // display initial world-frame acceleration, adjusted to remove gravity
   // and rotated based on known orientation from quaternion
   mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -138,10 +135,10 @@ void Gyro::getWorldAccel(double * valueArray) {
   valueArray[2] = aaWorld.z;
 }
 
-bool Gyro::getGyroData(DataType type, double * valueArray) {
+bool Gyro::readGyroData(DataType type, double * valueArray) {
   // if programming failed, don't try to do anything and check MPU interrupt or extra packet(s) available
 	if (!dmpReady || !interruptReady()) {
-    Serial.println("DMP not ready! Returning null.");
+    Serial.println("DMP not ready! Returning failure.");
 		return false;
 	}
 
@@ -156,14 +153,14 @@ bool Gyro::getGyroData(DataType type, double * valueArray) {
   if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
       // reset so we can continue cleanly
       mpu.resetFIFO();
-      Serial.println(F("FIFO overflow! Returning null."));
+      Serial.println(F("FIFO overflow! Returning failure."));
       return false;
 
   // otherwise, check for DMP data ready interrupt (this should happen frequently)
   } else if (mpuIntStatus & 0x02) {
       // wait for correct available data length, should be a VERY short wait
 
-      // TODO examine this
+      // Should hopefully be a short delay
       while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
 
       // read a packet from FIFO
@@ -173,44 +170,23 @@ bool Gyro::getGyroData(DataType type, double * valueArray) {
       // (this lets us immediately read more without waiting for an interrupt)
       fifoCount -= packetSize;
 
-
-		// Quaternion: actual quaternion components in a [w, x, y, z] format (not best for parsing
-		// on a remote host such as Processing or something though)
-
-		// Euler: Euler angles (in degrees) calculated from the quaternions coming from the FIFO.
-		// Note that Euler angles suffer from gimbal lock (for more info, see http://en.wikipedia.org/wiki/Gimbal_lock)
-
-		// YawPitchRoll: Yaw/pitch/roll angles (in degrees) calculated from the quaternions coming
-		// from the FIFO. Note this also requires gravity vector calculations.
-		// Also note that yaw/pitch/roll angles suffer from gimbal lock (for
-		// more info, see: http://en.wikipedia.org/wiki/Gimbal_lock)
-
-		// RealAccel: acceleration components with gravity removed. This acceleration reference frame is
-		// not compensated for orientation, so +X is always +X according to the
-		// sensor, just without the effects of gravity. If you want acceleration
-		// compensated for orientation, us WorldAccel instead.
-
-		// WorldAccel: Acceleration components with gravity removed and adjusted for the world frame of
-		// reference (yaw is relative to initial orientation, since no magnetometer
-		// is present in this case). Could be quite handy in some cases.
       switch (type) {
       	case Gyro::DataType::QUATERNION:
-      		getQuaternion(valueArray);
+      		readQuaternion(valueArray);
           return true;
       	case Gyro::DataType::EULERANGLE:
-          getEuler(valueArray);
+          readEuler(valueArray);
           return true;
       	case Gyro::DataType::YAWPITCHROLL:
-      		getYawPitchRoll(valueArray);
+      		readYawPitchRoll(valueArray);
           return true;
       	case Gyro::DataType::REALACCEL:
-      		getRealAccel(valueArray);
+      		readRealAccel(valueArray);
           return true;
       	case Gyro::DataType::WORLDACCEL:
-      		getWorldAccel(valueArray);
+      		readWorldAccel(valueArray);
           return true;
       }
   }
-  Serial.println("No correct type, so returning null.");
   return false;
 }

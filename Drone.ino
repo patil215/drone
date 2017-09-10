@@ -1,53 +1,47 @@
 #include <Wire.h>
 #include "Gyro.h"
 
-Gyro gyro;
+double dataBuffer[10];
 
-double gyroValues[4];
-int i = 0;
+Gyro gyro;
+double quaternionData[4];
+
+void setup() {
+  Serial.begin(9600);
+  initializeGyro();
+}
+
+void loop() {
+  if (gyro.interruptReady()) {
+    bool success = gyro.readGyroData(Gyro::DataType::QUATERNION, dataBuffer);
+    if (success) {
+      copyBuffer(dataBuffer, quaternionData, 4);
+    }
+  }
+}
+
+void initializeGyro() {
+  Serial.print("Enabling interrupt detection on interrupt 0...");
+  attachInterrupt(0, handleGyroInterrupt, RISING);
+  Serial.println(" done.");
+
+  if (!gyro.initialize()) {
+    Serial.println("Gyro initialization failed.");
+  }
+  if (!gyro.startDmp()) {
+    Serial.println("Gyro DMP starting failed.");
+  }
+}
 
 void handleGyroInterrupt() {
   gyro.onDmpDataReady();
 }
 
-void enableGyroInterrupt() {
-  // enable Arduino interrupt detection
-  Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
-  attachInterrupt(0, handleGyroInterrupt, RISING);
-  Serial.println("Interrupt attached");
-}
-
-void setup() {
-  Serial.begin(9600);
-  enableGyroInterrupt();
-  if (!gyro.initialize()) {
-    Serial.println("Gyro initialization failed!");
-  }
-  if (!gyro.startDmp()) {
-    Serial.println("Gyro DMP starting failed!");
+void copyBuffer(double from[], double to[], int length) {
+  for (int i = 0; i < length; i++) {
+    to[i] = from[i];
   }
 }
-
-void loop() {
-  if (gyro.interruptReady()) {
-    bool result = gyro.getGyroData(Gyro::DataType::QUATERNION, gyroValues);
-    if (!result) {
-      Serial.println("Failed to get Gyro data");
-    }
-    if ((i % 500) == 0) {
-      Serial.println(gyroValues[0]);
-      Serial.println(gyroValues[1]);
-      Serial.println(gyroValues[2]);
-      Serial.println(gyroValues[3]);
-      Serial.println("");
-      i = 0;
-    }
-    i += 1;
-  }
-  delay(1);
-}
-
-
 
 
 

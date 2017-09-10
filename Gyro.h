@@ -8,14 +8,37 @@ class Gyro {
   public:
   	bool initialize();
   	bool startDmp();
-
+    
     enum class DataType {
-    	QUATERNION, EULERANGLE, YAWPITCHROLL, REALACCEL, WORLDACCEL, TEAPOT
+      /* Actual quaternion components in a [w, x, y, z] format (not best for parsing
+      on a remote host such as Processing or something) */
+    	QUATERNION, 
+
+      /* Euler angles (in degrees) calculated from the quaternions coming from the FIFO.
+      Note that Euler angles suffer from gimbal lock */
+      EULERANGLE,
+
+      /* Yaw/pitch/roll angles (in degrees) calculated from the quaternions coming
+      from the FIFO. Note this also requires gravity vector calculations.
+      Also note that yaw/pitch/roll angles suffer from gimbal lock (for
+      more info, see: http://en.wikipedia.org/wiki/Gimbal_lock) */
+      YAWPITCHROLL,
+
+      /* Acceleration components with gravity removed. This acceleration reference frame is
+      not compensated for orientation, so +X is always +X according to the
+      sensor, just without the effects of gravity. If you want acceleration
+      compensated for orientation, us WorldAccel instead. */
+      REALACCEL,
+
+      /* Acceleration components with gravity removed and adjusted for the world frame of
+      reference (yaw is relative to initial orientation, since no magnetometer
+      is present in this case). Could be quite handy in some cases. */
+      WORLDACCEL
     };
 
     bool interruptReady();
     void onDmpDataReady();
-    bool getGyroData(DataType type, double * valueArray);
+    bool readGyroData(DataType type, double * valueArray);
 
   private:
     MPU6050 mpu;	  
@@ -42,11 +65,11 @@ class Gyro {
   	volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
   
   	int16_t * getCalibratedOffsets();
-    void getQuaternion(double * valueArray);
-    void getEuler(double * valueArray);
-    void getYawPitchRoll(double * valueArray);
-    void getRealAccel(double * valueArray);
-    void getWorldAccel(double * valueArray);
+    void readQuaternion(double * valueArray);
+    void readEuler(double * valueArray);
+    void readYawPitchRoll(double * valueArray);
+    void readRealAccel(double * valueArray);
+    void readWorldAccel(double * valueArray);
 
 };
 #endif
