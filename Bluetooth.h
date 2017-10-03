@@ -6,6 +6,6 @@ class Bluetooth {
 		void initialize(int pin);
 		bool packetReady();
 		void getPacket();
-}
+};
 
 #endif

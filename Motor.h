@@ -4,11 +4,11 @@
 class Motor {
 	public:
 		void initialize(int pin);
-		void setSpeed(double speed);
+		void setSpeed(double s);
 		double getSpeed();
 	private:
 		int pin;
-		double speed;
-}
+		double sp;
+};
 
 #endif

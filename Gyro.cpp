@@ -28,16 +28,16 @@ bool Gyro::initialize() {
 
   // verify connection
   if (!mpu.testConnection()) {
-  	return false;
+    return false;
   }
   return true;
 }
   
 // TODO have this be calibrated
 int16_t * Gyro::getCalibratedOffsets() {
-	// 0: x, 1: y, 2: z, 3: z_accel
-  int16_t vals[] = {220, 76, 85, 1788};
-	return vals;
+  // 0: x, 1: y, 2: z, 3: z_accel
+  int16_t vals[] = {39, -177, -19, 1275};
+  return vals;
 }
 
   
@@ -80,11 +80,11 @@ bool Gyro::startDmp() {
 }
 
 bool Gyro::interruptReady() {
-	return mpuInterrupt || !(fifoCount >= packetSize);
+  return mpuInterrupt || !(fifoCount >= packetSize);
 }
 
 void Gyro::readQuaternion(double * valueArray) {
-	// 0: w, 1: x, 2: y, 3: z
+  // 0: w, 1: x, 2: y, 3: z
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   valueArray[0] = q.w;
   valueArray[1] = q.x;
@@ -137,10 +137,10 @@ void Gyro::readWorldAccel(double * valueArray) {
 
 bool Gyro::readGyroData(DataType type, double * valueArray) {
   // if programming failed, don't try to do anything and check MPU interrupt or extra packet(s) available
-	if (!dmpReady || !interruptReady()) {
+  if (!dmpReady || !interruptReady()) {
     Serial.println("DMP not ready! Returning failure.");
-		return false;
-	}
+    return false;
+  }
 
   // reset interrupt flag and get INT_STATUS byte
   mpuInterrupt = false;
@@ -171,20 +171,20 @@ bool Gyro::readGyroData(DataType type, double * valueArray) {
       fifoCount -= packetSize;
 
       switch (type) {
-      	case Gyro::DataType::QUATERNION:
-      		readQuaternion(valueArray);
+        case Gyro::DataType::QUATERNION:
+          readQuaternion(valueArray);
           return true;
-      	case Gyro::DataType::EULERANGLE:
+        case Gyro::DataType::EULERANGLE:
           readEuler(valueArray);
           return true;
-      	case Gyro::DataType::YAWPITCHROLL:
-      		readYawPitchRoll(valueArray);
+        case Gyro::DataType::YAWPITCHROLL:
+          readYawPitchRoll(valueArray);
           return true;
-      	case Gyro::DataType::REALACCEL:
-      		readRealAccel(valueArray);
+        case Gyro::DataType::REALACCEL:
+          readRealAccel(valueArray);
           return true;
-      	case Gyro::DataType::WORLDACCEL:
-      		readWorldAccel(valueArray);
+        case Gyro::DataType::WORLDACCEL:
+          readWorldAccel(valueArray);
           return true;
       }
   }

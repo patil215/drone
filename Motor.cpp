@@ -1,15 +1,16 @@
 #include "Motor.h"
+#import <Arduino.h>
 
-void Motor::initialize(int pin) {
-	this.pin = pin;
+void Motor::initialize(int p) {
+	pin = p;
 	pinMode(pin, OUTPUT);
 }
 
-void Motor::setSpeed(double speed) {
-	this.speed = speed;
-	analogWrite(pin, speed);
+void Motor::setSpeed(double s) {
+	sp = s;
+	analogWrite(pin, sp);
 }
 
 double Motor::getSpeed() {
-	return speed;
+	return sp;
 }

@@ -1,10 +1,26 @@
 #include <Wire.h>
 #include "Gyro.h"
+#include "Motor.h"
+#include "Pwm.h"
+#include "Bluetooth.h"
+#include <PID_v1.h>
+
+//Define Variables we'll be connecting to
+double pitchSetpoint, pitchInput, pitchOutput;
+double rollSetpoint, rollInput, rollOutput;
+
+//Define the aggressive and conservative Tuning Parameters
+double consKp = 1, consKi = 0.05, consKd = 0.25;
+PID pitchPID(&rollInput, &rollOutput, &rollSetpoint, consKp, consKi, consKd, DIRECT);
+PID rollPID(&pitchInput, &pitchOutput, &pitchSetpoint, consKp, consKi, consKd, DIRECT);
+
+int targetSpeed[4];
 
 double dataBuffer[10];
 
 Gyro gyro;
 double quaternionData[4];
+double yprData[3];
 
 Bluetooth bluetooth;
 
@@ -16,16 +32,65 @@ Motor motorD;
 void setup() {
   Serial.begin(9600);
   initializeGyro();
+  initializeMotors();
+
+  pitchInput = 0.0;
+  rollInput = 0.0;
+
+  pitchSetpoint = 0.0;
+  rollSetpoint = 0.0;
+
+  //turn the PID on
+  pitchPID.SetMode(AUTOMATIC);
+  rollPID.SetMode(AUTOMATIC);
+
+  pitchPID.SetOutputLimits(-20, 20);
+  rollPID.SetOutputLimits(-20, 20);
 }
 
 void loop() {
+  targetSpeed[0] = 10;
+  targetSpeed[1] = 10;
+  targetSpeed[2] = 10;
+  targetSpeed[3] = 10;
+  
   if (gyro.interruptReady()) {
-    bool success = gyro.readGyroData(Gyro::DataType::QUATERNION, dataBuffer);
+    bool success = gyro.readGyroData(Gyro::DataType::YAWPITCHROLL, dataBuffer);
     if (success) {
-      copyBuffer(dataBuffer, quaternionData, 4);
+      copyBuffer(dataBuffer, yprData, 3);
+
+      pitchInput = yprData[1];
+      rollInput = yprData[2];
+      pitchPID.Compute();
+      rollPID.Compute();
+
+      int actSpeed[4];
+      stabilise(targetSpeed, actSpeed, rollOutput, pitchOutput);
+
+      runIndividual(actSpeed);
     }
   }
 }
+
+void runIndividual (int* actSpeed) {
+  motorA.setSpeed(actSpeed[0]);
+  motorB.setSpeed(actSpeed[1]);
+  motorC.setSpeed(actSpeed[2]);
+  motorD.setSpeed(actSpeed[3]);
+}
+
+void stabilise (int* currSpeed, int* actSpeed, float rollDiff, float pitchDiff) {
+  actSpeed[0] = (int) currSpeed[0] + (rollDiff / 2) - (pitchDiff / 2);  //each motor has actual Speed and speed at which we want them to fly...
+  actSpeed[1] = (int) currSpeed[1] + (rollDiff / 2) + (pitchDiff / 2);
+  actSpeed[2] = (int) currSpeed[2] - (rollDiff / 2) + (pitchDiff / 2);  //actual Speed is calculated as follows +- half rollDiff +- half pitchDiff
+  actSpeed[3] = (int) currSpeed[3] - (rollDiff / 2) - (pitchDiff / 2);
+
+  for (int i = 0; i < 4; i ++) {
+    if (actSpeed[i] < 0 )
+      actSpeed[i] = 0;
+  }
+}
+
 
 void initializeGyro() {
   Serial.print("Enabling interrupt detection on interrupt 0...");
@@ -38,6 +103,17 @@ void initializeGyro() {
   if (!gyro.startDmp()) {
     Serial.println("Gyro DMP starting failed.");
   }
+}
+
+void initializeMotors() {
+  pinMode(6, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10, OUTPUT);
+  pinMode(11, OUTPUT);
+  motorA.initialize(6);
+  motorB.initialize(9);
+  motorC.initialize(10);
+  motorD.initialize(11);
 }
 
 void handleGyroInterrupt() {
@@ -154,56 +230,3 @@ void loop()
     lastValue=blueToothVal;
   }
 }*/
-/*
-// ACCELEROMETER
-
-  // Read the 'raw' data in 14-bit counts
-  mma.read();
-  Serial.print("X:\t"); Serial.print(mma.x); 
-  Serial.print("\tY:\t"); Serial.print(mma.y); 
-  Serial.print("\tZ:\t"); Serial.print(mma.z); 
-  Serial.println();
-
-  // Get a new sensor event
-  sensors_event_t event; 
-  mma.getEvent(&event);
-
-  // Display the results (acceleration is measured in m/s^2) 
-  Serial.print("X: \t"); Serial.print(event.acceleration.x); Serial.print("\t");
-  Serial.print("Y: \t"); Serial.print(event.acceleration.y); Serial.print("\t");
-  Serial.print("Z: \t"); Serial.print(event.acceleration.z); Serial.print("\t");
-  Serial.println("m/s^2 ");
-  
-  // Get the orientation of the sensor
-  uint8_t o = mma.getOrientation();
-  
-  switch (o) {
-    case MMA8451_PL_PUF: 
-      Serial.println("Portrait Up Front");
-      break;
-    case MMA8451_PL_PUB: 
-      Serial.println("Portrait Up Back");
-      break;    
-    case MMA8451_PL_PDF: 
-      Serial.println("Portrait Down Front");
-      break;
-    case MMA8451_PL_PDB: 
-      Serial.println("Portrait Down Back");
-      break;
-    case MMA8451_PL_LRF: 
-      Serial.println("Landscape Right Front");
-      break;
-    case MMA8451_PL_LRB: 
-      Serial.println("Landscape Right Back");
-      break;
-    case MMA8451_PL_LLF: 
-      Serial.println("Landscape Left Front");
-      break;
-    case MMA8451_PL_LLB: 
-      Serial.println("Landscape Left Back");
-      break;
-    }
-  Serial.println();
-  delay(500);
-  */
-//}*/

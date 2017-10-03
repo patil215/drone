@@ -1,18 +1,17 @@
 #include "Bluetooth.h";
 
-void Bluetooth:initialize() {
+
+void Bluetooth::initialize(int pin) {
 	// pass
 }
 
-bool Bluetooth:packetReady() {
+bool Bluetooth::packetReady() {
 	return Serial.available();
 }
 
 char getPacket() {
-	if (!packetReady) {
-		return NULL;
-	}
+	//pass
 
-	char value = Serial.read();
-	return value;
+	//char value = Serial.read();
+	//return value;
 }
