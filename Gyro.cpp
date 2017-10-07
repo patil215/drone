@@ -32,8 +32,8 @@ bool Gyro::initialize() {
   }
   return true;
 }
-  
-// TODO have this be calibrated
+
+
 int16_t * Gyro::getCalibratedOffsets() {
   // 0: x, 1: y, 2: z, 3: z_accel
   int16_t vals[] = {39, -177, -19, 1275};
@@ -80,7 +80,7 @@ bool Gyro::startDmp() {
 }
 
 bool Gyro::interruptReady() {
-  return mpuInterrupt || !(fifoCount >= packetSize);
+  return mpuInterrupt || (fifoCount >= packetSize);
 }
 
 void Gyro::readQuaternion(double * valueArray) {
@@ -106,9 +106,14 @@ void Gyro::readYawPitchRoll(double * valueArray) {
   mpu.dmpGetQuaternion(&q, fifoBuffer);
   mpu.dmpGetGravity(&gravity, &q);
   mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+  
+  // TODO find these values experimentally
+  double ypr_cal[3];
+  ypr_cal[1] = 1.26;
+  ypr_cal[2] = -0.55;
   valueArray[0] = ypr[0] * 180/M_PI;
-  valueArray[1] = ypr[1] * 180/M_PI;
-  valueArray[2] = ypr[2] * 180/M_PI;
+  valueArray[1] = ypr[1] * 180/M_PI - ypr_cal[1];
+  valueArray[2] = ypr[2] * 180/M_PI - ypr_cal[2];
 }
 
 void Gyro::readRealAccel(double * valueArray) {
@@ -137,8 +142,12 @@ void Gyro::readWorldAccel(double * valueArray) {
 
 bool Gyro::readGyroData(DataType type, double * valueArray) {
   // if programming failed, don't try to do anything and check MPU interrupt or extra packet(s) available
-  if (!dmpReady || !interruptReady()) {
+  if (!dmpReady) {
     Serial.println("DMP not ready! Returning failure.");
+    return false;
+  }
+
+  if (!interruptReady()) {
     return false;
   }
 
@@ -163,12 +172,15 @@ bool Gyro::readGyroData(DataType type, double * valueArray) {
       // Should hopefully be a short delay
       while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
 
-      // read a packet from FIFO
       mpu.getFIFOBytes(fifoBuffer, packetSize);
-      
-      // track FIFO count here in case there is > 1 packet available
-      // (this lets us immediately read more without waiting for an interrupt)
       fifoCount -= packetSize;
+
+      // Iterate until we get the latest data
+      while (fifoCount >= packetSize) {
+        // read a packet from FIFO
+        mpu.getFIFOBytes(fifoBuffer, packetSize);
+        fifoCount -= packetSize;
+      }
 
       switch (type) {
         case Gyro::DataType::QUATERNION:
