@@ -45,13 +45,35 @@ void setup() {
 
   pitchPID.SetOutputLimits(-20, 20);
   rollPID.SetOutputLimits(-20, 20);
+
+  targetSpeed[0] = -10;
+  targetSpeed[1] = -10;
+  targetSpeed[2] = -10;
+  targetSpeed[3] = -10;
+}
+
+void changeTargetSpeed(int delta) {
+  targetSpeed[0] += delta;
+  targetSpeed[1] += delta;
+  targetSpeed[2] += delta;
+  targetSpeed[3] += delta;
 }
 
 void loop() {
-  targetSpeed[0] = 20;
-  targetSpeed[1] = 20;
-  targetSpeed[2] = 20;
-  targetSpeed[3] = 20;
+
+  char bluetoothVal = 'a';
+
+  if (Serial.available()) {
+    bluetoothVal = Serial.read();
+  }
+
+  if (bluetoothVal == 'u') {
+    changeTargetSpeed(1);    
+  }
+
+  if (bluetoothVal == 'd') {
+    changeTargetSpeed(-1);
+  }
   
   bool gyroRead = gyro.readGyroData(Gyro::DataType::YAWPITCHROLL, dataBuffer);
   if (gyroRead) {
@@ -86,7 +108,6 @@ void stabilise (int * currSpeed, int * actSpeed, float rollDiff, float pitchDiff
 
   for (int i = 0; i < 4; i ++) {
     if (actSpeed[i] < 0 ) {
-      Serial.println("actspeed negative");
       actSpeed[i] = 0;
     }
   }
