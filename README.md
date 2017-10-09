@@ -1,6 +1,6 @@
 ## Drone
 
-This is a project to build an automated drone from scratch using an Arduino Nano as off the shelf motors and sensors (MPU6050 Gyroscope, Bluetooth module, etc).
+This is a project to build an automated drone from scratch using and Arduino Nano as well as off-the-shelf motors and sensors (such as the MPU6050 Gyroscope).
 
 We are currently in the stage of prototyping the hardware behind the drone.
 
